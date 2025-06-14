@@ -1001,8 +1001,12 @@
             setArmAngle(0);
 
             if (isRunning) {
+              // Ensure Tone.start() is called directly within a user gesture for mobile audio
+              // This is crucial for audio to work on browsers like Chrome/Brave on Android
               if (Tone.context.state !== 'running') {
-                Tone.start();
+                Tone.start().then(() => {
+                    console.log("AudioContext resumed by user gesture.");
+                }).catch(e => console.error("Error starting Tone.js AudioContext:", e));
               }
 
               mainBeatEventId.current = transportRef.current.scheduleRepeat(playClick, "4n", 0);
@@ -1302,7 +1306,17 @@
             window.removeEventListener('touchend', stopHoldingBpm);
           }, []);
 
-          const toggleMetronome = () => {
+          const toggleMetronome = async () => { // Made async to await Tone.start()
+            if (!isRunning && Tone.context.state !== 'running') {
+              try {
+                await Tone.start();
+                console.log("AudioContext resumed by user gesture.");
+              } catch (e) {
+                console.error("Error starting Tone.js AudioContext:", e);
+                // Optionally show a user-friendly message here
+                return; // Prevent starting metronome if audio context failed
+              }
+            }
             setIsRunning(!isRunning);
           };
 
@@ -1366,7 +1380,7 @@
 
           return (
             React.createElement('div', { className: 'h-screen w-screen bg-gradient-to-br from-indigo-800 to-purple-900 flex items-center justify-center p-4 font-inter overflow-hidden' },
-              React.createElement('div', { className: 'bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl shadow-2xl p-8 md:p-12 w-full max-w-md text-center border border-white border-opacity-20' },
+              React.createElement('div', { className: 'bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl shadow-2xl p-6 w-full max-w-md text-center border border-white border-opacity-20 flex flex-col justify-between max-h-[98vh] overflow-y-auto' },
                 React.createElement('div', { className: 'absolute top-4 left-4' },
                   React.createElement('button', {
                     onClick: () => setActiveModal('practiceTools'),
